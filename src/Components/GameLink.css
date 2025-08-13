@@ -1,0 +1,33 @@
+.game-link {
+    display: flex;
+    place-content: center;
+    text-align: left;
+    width: 100%;
+    margin: 2em 0;
+    
+    h2 {
+        margin: 0;
+    }
+
+    p {
+        color: var(--text-color);
+        text-align: justify;
+    }
+
+    .content {
+        padding: 1em;
+        width: 50%;
+        background-color: var(--background-color-subtle);
+        border-radius: 1em;
+        border: 3px solid var(--background-color-subtle);
+
+        @media (orientation: portrait) {
+            width: 80%;
+        }
+    }
+    
+    .content:hover {
+        background-color: var(--background-color-subtle-hover);
+    }
+}
+
