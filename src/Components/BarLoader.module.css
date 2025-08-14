@@ -1,0 +1,35 @@
+
+@keyframes loader-animation {
+    0% {
+        margin-left: -50%;
+        margin-right: 110%;
+        /*animation-timing-function: ease-in;*/
+    }
+
+    50% {
+        margin-left: 0;
+        margin-right: 0;
+        animation-timing-function: ease-in;
+    }
+
+    100% {
+        margin-left: 110%;
+        margin-right: -50%;
+        /*animation-timing-function: ease-out;*/
+    }
+}
+
+.loader-wrapper {
+    background: rgba(110, 110, 255, 0.3);
+    border-radius: inherit;
+    overflow: hidden;
+}
+
+.loader {
+    /*display: inline-block;*/
+    width: auto;
+    height: 100%;
+    border-radius: inherit;
+    background: deepskyblue;
+    animation: loader-animation 1.5s ease infinite;
+}
