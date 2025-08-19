@@ -17,6 +17,10 @@ class SignalRService {
     get state() {
         return this.connection.state;
     }
+    
+    get connectionId() {
+        return this.connection.connectionId;
+        }
 
     onclose = (callback: (error?: Error) => void) => {
         this.connection.onclose(callback);

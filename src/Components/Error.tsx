@@ -7,9 +7,11 @@ function Error({error, errorDetails}: { error: string, errorDetails: string | nu
             <Stack w={500}>
                 <div style={{textAlign: 'center'}}>
                     <Title order={1}>Something went wrong</Title>
-                    <p>{error} <br/>
-                        <Anchor href={""}>Reload</Anchor></p>
-                    
+                    <p>{error} 
+                        <br/>
+                        <Anchor href={""}>Reload</Anchor>
+                    </p>
+
                     {errorDetails ? <Spoiler showLabel={<span className={"spoilerLabel"}>Show details</span>}
                                              hideLabel={<span className={"spoilerLabel"}>Hide details</span>}
                                              maxHeight={0}>

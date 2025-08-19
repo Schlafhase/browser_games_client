@@ -6,12 +6,14 @@ import SignalRService from "../../SignalRService.ts";
 import BarLoader from "../../Components/BarLoader.tsx";
 import Error from "../../Components/Error.tsx";
 import PretenderGame from "../../Components/PretenderGame.tsx";
+import  Member from "../../Classes/Member.ts";
 
 const hubUrl: string = import.meta.env.DEV ? "http://localhost:5000/api/pretenderHub" : "/api/pretenderHub";
 const pretenderHubConnection = new SignalRService(hubUrl);
 
 function Pretender() {
     const firstRender = useRef(true);
+
     const [searchParams, setSearchParams] = useSearchParams();
 
     const [username, setUsername] = useState<string>("");
@@ -19,12 +21,16 @@ function Pretender() {
 
     const [error, setError] = useState<string | null>(null);
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
+    const hasError = useRef(false);
 
     const [lobbyId, setLobbyId] = useState<string | null>(null)
-    const [creatingLobby, setCreatingLobby] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [loadingText, setLoadingText] = useState<string>("Creating Lobby...");
 
     const [joinedLobby, setJoinedLobby] = useState<boolean>(false);
     const [disableButton, setDisableButton] = useState<boolean>(false);
+    
+    const members = useRef<Member[]>([]);
 
     // Logic
     useEffect(() => {
@@ -39,7 +45,9 @@ function Pretender() {
         pretenderHubConnection.stop().then(async () => {
             try {
                 await pretenderHubConnection.start();
-                pretenderHubConnection.onclose((e) => dispatchError("Connection closed unexpectedly", e?.message));
+                pretenderHubConnection.onclose((e) => {
+                    dispatchError("Connection closed unexpectedly", e?.message)
+                });
             } catch (e) {
                 dispatchError("Failure establishing connection", (e as Error).message);
                 return;
@@ -62,12 +70,14 @@ function Pretender() {
     if (error) {
         content = <Error error={error}
                          errorDetails={errorDetails}/>;
-    } else if (creatingLobby) {
+        console.log("stopping coz error")
+        pretenderHubConnection.stop().then();
+    } else if (loading) {
         content = (
             <Center h="100vh">
                 <Stack>
                     <div style={{textAlign: 'center'}}>
-                        <Title order={1}>Creating Lobby...</Title>
+                        <Title order={1}>{loadingText}</Title>
                     </div>
                     <Center inline>
                         <BarLoader/>
@@ -93,7 +103,8 @@ function Pretender() {
         );
     } else if (joinedLobby && lobbyId) {
         content = (
-            <PretenderGame connection={pretenderHubConnection} lobbyId={lobbyId}></PretenderGame>
+            <PretenderGame connection={pretenderHubConnection} lobbyId={lobbyId}
+                           dispatchError={dispatchError} initialMembers={members.current}></PretenderGame>
         )
     }
 
@@ -118,26 +129,42 @@ function Pretender() {
             setUsernameError("Username is required");
             return;
         }
-        
-        setDisableButton(true);
-        if (username === "") {
-            setUsernameError("Username is required");
-            return;
-        }
+
         if (!lobbyId) {
             dispatchError("No lobby ID provided");
             return;
         }
 
-        try {
-            await pretenderHubConnection.invoke("JoinLobby", lobbyId, username)
+        setDisableButton(true);
+        let serverResponded = false;
+
+        pretenderHubConnection.on("ReceiveLobbyInformation", (m: Record<string, string>) => {
+            pretenderHubConnection.off("ReceiveLobbyInformation");
+            
+            setLoading(false);
             setJoinedLobby(true);
+            serverResponded = true;
+            
+            members.current = Object.keys(m).map((key: string) => new Member(key, m[key]));
+            console.log(m)
+            console.log("Joined lobby with ID:", lobbyId);
+        });
+
+        try {
+            setLoading(true);
+            setLoadingText("Joining Lobby...");
+            await pretenderHubConnection.invoke("JoinLobby", lobbyId, username)
         } catch (e) {
             console.error("Failed to join lobby: ", e);
             dispatchError("Failed to join lobby", (e as Error).message);
         }
 
-        console.log("Joined lobby:", lobbyId);
+        setTimeout(() => {
+            if (!serverResponded) {
+                dispatchError("Server timed out while joining lobby");
+                pretenderHubConnection.off("ReceiveLobbyInformation");
+            }
+        }, 5000);
     }
 
     async function createLobby() {
@@ -145,22 +172,26 @@ function Pretender() {
             setUsernameError("Username is required");
             return;
         }
-        
+
         setDisableButton(true);
         let serverResponded = false;
 
         pretenderHubConnection.on("LobbyCreated", (lobbyId: string) => {
             pretenderHubConnection.off("LobbyCreated");
-            setCreatingLobby(false);
+            
+            members.current = [{ConnectionId: pretenderHubConnection.connectionId!, Username: username}];
+            setLoading(false);
             setJoinedLobby(true);
-            console.log("Lobby created with ID:", lobbyId);
             serverResponded = true;
+            
             setLobbyId(lobbyId);
             setSearchParams({lobbyId: lobbyId});
+            console.log("Lobby created with ID:", lobbyId);
         });
 
         try {
-            setCreatingLobby(true);
+            setLoading(true);
+            setLoadingText("Creating Lobby...");
             await pretenderHubConnection.invoke("CreateLobby", username);
         } catch (e) {
             dispatchError("Failed to create lobby", (e as Error).message);
@@ -176,8 +207,13 @@ function Pretender() {
     }
 
     function dispatchError(message: string, details: string | null = null) {
+        if (hasError.current) {
+            return;
+        }
+
         setError(message);
         setErrorDetails(details);
+        hasError.current = true;
     }
 }
 
