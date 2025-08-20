@@ -1,7 +1,7 @@
 import {Anchor, Blockquote, Center, Spoiler, Stack, Title} from "@mantine/core";
 import "./Error.css";
 
-function Error({error, errorDetails}: { error: string, errorDetails: string | null }) {
+function Error({error, errorDetails}: { error: string, errorDetails?: string | null }) {
     return (
         <Center h="100vh">
             <Stack w={500}>
